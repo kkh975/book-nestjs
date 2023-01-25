@@ -1,12 +1,26 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  Headers,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserLoginDto } from './dto/user-login.dto ';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { AuthService } from 'src/auth/auth.service';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post()
   async create(@Body() dto: CreateUserDto): Promise<void> {
@@ -29,19 +43,37 @@ export class UsersController {
     return await this.usersService.login(email, password);
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id')
-  async getUserInfo(@Param('id') userId: string): Promise<void> {
-    return await this.usersService.getUserInfo(userId);
+  async getUserInfo(
+    @Headers() headers: any,
+    @Param('id') userId: string,
+  ): Promise<UserInfo> {
+    const jwtString = headers.authorization.split('Bears ')[1];
+    this.authService.verify(jwtString);
+
+    return this.usersService.getUserInfo(userId);
   }
 
   // @Get()
-  // findAll() {
+  // findAll(
+  //   @Query('offset', new DefaultValuePipe(0), ParseIntPipe)
+  //   offset: number,
+  //   @Query('limit', new DefaultValuePipe(10), ParseIntPipe)
+  //   limit: number,
+  // ) {
   //   return this.usersService.findAll();
   // }
 
   // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.usersService.findOne(+id);
+  // findOne(
+  //   @Param(
+  //     'id',
+  //     new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
+  //   )
+  //   id: number,
+  // ) {
+  //   return this.usersService.findOne(id);
   // }
 
   // @Patch(':id')
