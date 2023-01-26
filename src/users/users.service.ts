@@ -9,7 +9,7 @@ import { UserInfo } from 'os';
 import { AuthService } from 'src/auth/auth.service';
 import { EmailService } from 'src/email/email.service';
 import { Repository } from 'typeorm';
-import { UserEntity } from './entities/user.entity';
+import { UserEntity } from './infra/db/entity/user.entity';
 
 @Injectable()
 export class UsersService {

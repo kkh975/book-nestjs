@@ -8,10 +8,12 @@ import { validationSchema } from './config/validationSchema';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth/auth.service';
 import * as winston from 'winston';
-import {
-  WinstonModule,
-  utilities as nestWinstonModuleUtilities,
-} from 'nest-winston';
+import * as nestWinston from 'nest-winston';
+import { ExceptionModule } from './exception/exception.module';
+import { LoggingModule } from './logging/logging.module';
+import { HealthCheckController } from './health-check/health-check.controller';
+import { TerminusModule } from '@nestjs/terminus';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -32,21 +34,25 @@ import {
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: process.env.DATABASE_SYNCHRONIZE === 'true',
     }),
-    WinstonModule.forRoot({
+    nestWinston.WinstonModule.forRoot({
       transports: [
         new winston.transports.Console({
           level: process.env.NODE_ENV === 'production' ? 'info' : 'silly',
           format: winston.format.combine(
             winston.format.timestamp(),
-            nestWinstonModuleUtilities.format.nestLike('MyApp', {
+            nestWinston.utilities.format.nestLike('MyApp', {
               prettyPrint: true,
             }),
           ),
         }),
       ],
     }),
+    ExceptionModule,
+    LoggingModule,
+    TerminusModule,
+    HttpModule,
   ],
-  controllers: [AppController, ApiController],
+  controllers: [AppController, ApiController, HealthCheckController],
   providers: [ConfigService, AuthService],
 })
 export class AppModule {}

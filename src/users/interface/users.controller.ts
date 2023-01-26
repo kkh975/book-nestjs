@@ -5,28 +5,34 @@ import {
   Body,
   Param,
   Query,
-  Headers,
   UseGuards,
+  ParseIntPipe,
+  HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
+import { UsersService } from '../users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserLoginDto } from './dto/user-login.dto ';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { AuthService } from 'src/auth/auth.service';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 
 @Controller('users')
 export class UsersController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private commandBus: CommandBus,
+    private queryBus: QueryBus,
   ) {}
 
   @Post()
-  async create(@Body() dto: CreateUserDto): Promise<void> {
+  async createUser(@Body() dto: CreateUserDto): Promise<void> {
     const { name, email, password } = dto;
-
-    return this.usersService.createUser(name, email, password);
+    // return this.usersService.createUser(name, email, password);
+    const command = new CreateUserCommand(name, email, password);
+    return this.commandBus.execute(command);
   }
 
   @Post('/email-verify')
@@ -43,16 +49,24 @@ export class UsersController {
     return await this.usersService.login(email, password);
   }
 
+  // @UseGuards(AuthGuard)
+  // @Get('/:id')
+  // async getUserInfo(
+  //   @Headers() headers: any,
+  //   @Param('id') userId: string,
+  // ): Promise<UserInfo> {
+  //   const jwtString = headers.authorization.split('Bears ')[1];
+  //   this.authService.verify(jwtString);
+
+  //   return this.usersService.getUserInfo(userId);
+  // }
+
   @UseGuards(AuthGuard)
   @Get('/:id')
-  async getUserInfo(
-    @Headers() headers: any,
-    @Param('id') userId: string,
-  ): Promise<UserInfo> {
-    const jwtString = headers.authorization.split('Bears ')[1];
-    this.authService.verify(jwtString);
+  async getUserInfo(@Param('id') userId: string): Promise<UserInfo> {
+    const getUserInfoQuery = new GetUserInfoQuery(userId);
 
-    return this.usersService.getUserInfo(userId);
+    return this.queryBus.execute(getUserInfoQuery);
   }
 
   // @Get()
@@ -65,16 +79,20 @@ export class UsersController {
   //   return this.usersService.findAll();
   // }
 
-  // @Get(':id')
-  // findOne(
-  //   @Param(
-  //     'id',
-  //     new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
-  //   )
-  //   id: number,
-  // ) {
-  //   return this.usersService.findOne(id);
-  // }
+  @Get(':id')
+  findOne(
+    @Param(
+      'id',
+      new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }),
+    )
+    id: number,
+  ) {
+    if (id < 1) {
+      throw new BadRequestException('id는 0보다 큰 정수여야 합니다.');
+    }
+
+    // return this.usersService.findOne(id);
+  }
 
   // @Patch(':id')
   // update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
